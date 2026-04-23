@@ -71,11 +71,13 @@ AudioTranslation
 ##index.html為網頁版的tonnze鍵盤及音檔測試檔，執行TonnzeTest2.py讀取剛剛ChangeJson.py生成的json檔，在本機運行，於瀏覽器輸入http://127.0.0.1:5001 即可。
 
 > [!TIP]
->音訊處理套件：
+> 相關套件：
+
+音訊處理套件：
 
          音訊處理套件：pip install flask
          
->json轉換模組：
+json轉換模組：
          
          fluidsynth:brew install fluidsynth
 
