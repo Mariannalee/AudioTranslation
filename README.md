@@ -14,7 +14,7 @@ AudioTranslation
 > 檔案指示
          MusicMIDI.py是音檔轉MIDI檔的程式碼
          
-         TonnzeTest.py是Midi檔轉tonnze之後讀取要用的json檔
+         TonnzeTest2.py是Midi檔轉tonnze之後讀取要用的json檔
          
          自行上傳不要太複雜的音檔，wav,mp3檔案皆可，作為音樂測試檔MusicMIDI.py執行完會產出output_midi的檔案夾，裡面有excel檔和.mid檔，選.mid檔到TonnzeTest.py分析
          
