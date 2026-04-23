@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>Tonnetz Harmony - Chord & Face Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body { margin: 0; background: #fbfbfd; overflow: hidden; display: flex; font-family: 'Inter', -apple-system, sans-serif; }
+        .viewport-frame { 
+            position: relative; width: calc(100vw - 380px); height: calc(100vh - 60px);
+            margin: 30px; background: #fbfbfd; border: 1px solid #D1D1D6; 
+            overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+        #sidebar { width: 320px; height: 100vh; background: #ffffff; border-right: 1px solid #D1D1D6; overflow-y: scroll; padding: 20px; box-sizing: border-box; font-size: 13px; }
+        .data-row { display: flex; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid #f0f0f2; color: #8e8e93; }
+        .data-row.active { background: #2C3E50; color: #fff; font-weight: 600; border-radius: 4px; }
+        canvas { display: block; touch-action: none; }
+        #controls { position: absolute; bottom: 50px; left: 50px; z-index: 100; }
+        button { background: #2C3E50; color: white; border: none; padding: 15px 35px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <div style="font-weight:bold; border-bottom:2px solid #333; padding-bottom:5px; margin-bottom:10px; display:flex; justify-content:space-between;">
+        <span>TIME</span><span>NOTES</span>
+    </div>
+    <div id="data-list">加載中...</div>
+</div>
+
+<div style="flex:1; position:relative; background:#f0f0f2; display:flex; align-items:center; justify-content:center;">
+    <div id="controls"><button id="play-btn" disabled>LOADING...</button></div>
+    <div class="viewport-frame" id="frame">
+        <canvas id="canvas"></canvas>
+    </div>
+</div>
+
+<script>
+let musicData = [];
+let isPlaying = false;
+let startTime = 0;
+let currentIndex = -1;
+let activeNotes = new Set(); // 儲存當前發聲的音名
+
+const size = 90;
+const nodeRadius = 26;
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const frame = document.getElementById('frame');
+const playBtn = document.getElementById('play-btn');
+
+// 鋼琴音色庫
+const sampler = new Tone.Sampler({
+    urls: { "A0": "A0.mp3", "C1": "C1.mp3", "D#1": "Ds1.mp3", "F#1": "Fs1.mp3", "A1": "A1.mp3", "C2": "C2.mp3", "D#2": "Ds2.mp3", "F#2": "Fs2.mp3", "A2": "A2.mp3", "C3": "C3.mp3", "D#3": "Ds3.mp3", "F#3": "Fs3.mp3", "A3": "A3.mp3", "C4": "C4.mp3", "D#4": "Ds4.mp3", "F#4": "Fs4.mp3", "A4": "A4.mp3", "C5": "C5.mp3", "D#5": "Ds5.mp3", "F#5": "Fs5.mp3", "A5": "A5.mp3", "C6": "C6.mp3", "D#6": "Ds6.mp3", "F#6": "Fs6.mp3", "A6": "A6.mp3", "C7": "C7.mp3", "D#7": "Ds7.mp3", "F#7": "Fs7.mp3", "A7": "A7.mp3", "C8": "C8.mp3" },
+    release: 1,
+    baseUrl: "https://tonejs.github.io/audio/salamander/"
+}).toDestination();
+
+Tone.loaded().then(() => loadMusicData());
+
+async function loadMusicData() {
+    try {
+        const response = await fetch('/api/data');
+        musicData = await response.json(); // 這是群組化後的資料
+        
+        const listEl = document.getElementById('data-list');
+        listEl.innerHTML = '';
+        musicData.forEach((item, index) => {
+            const row = document.createElement('div');
+            row.className = 'data-row';
+            row.id = `row-${index}`;
+            const notesStr = item.notes.map(n => n.name).join(', ');
+            row.innerHTML = `<span>${item.time.toFixed(3)}s</span><span>${notesStr}</span>`;
+            listEl.appendChild(row);
+        });
+
+        playBtn.innerText = "START PERFORMANCE";
+        playBtn.disabled = false;
+    } catch (err) { console.error(err); }
+}
+
+function getNoteInfo(q, r) {
+    const names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const midiValue = 60 + q * 7 + r * 4;
+    return {
+        name: names[((midiValue % 12) + 12) % 12] + (Math.floor(midiValue / 12) - 1),
+        midi: midiValue,
+        q: q, r: r
+    };
+}
+
+function getPos(q, r) {
+    return { 
+        x: q * size * 1.5 + canvas.width / 2, 
+        y: (r * size * Math.sqrt(3) + q * size * Math.sqrt(3) / 2) + canvas.height / 2 
+    };
+}
+
+function updatePlayback() {
+    if (!isPlaying) return;
+    const elapsed = Tone.now() - startTime;
+
+    for (let i = currentIndex + 1; i < musicData.length; i++) {
+        if (elapsed >= musicData[i].time) {
+            currentIndex = i;
+            const event = musicData[i];
+            
+            // 同時觸發該時間點的所有音符
+            const tones = event.notes.map(n => n.name);
+            sampler.triggerAttackRelease(tones, "0.5s");
+
+            // 視覺更新：將音符加入 Set 並排程移除
+            tones.forEach(t => activeNotes.add(t));
+            setTimeout(() => {
+                tones.forEach(t => activeNotes.delete(t));
+            }, 500);
+
+            // 側邊欄高亮
+            const currRow = document.getElementById(`row-${i}`);
+            document.querySelectorAll('.data-row.active').forEach(r => r.classList.remove('active'));
+            currRow.classList.add('active');
+            currRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else { break; }
+    }
+}
+
+function animate() {
+    ctx.fillStyle = "#fbfbfd";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    updatePlayback();
+
+    // 1. 畫背景網格
+    ctx.strokeStyle = "#E5E5E7";
+    ctx.lineWidth = 1;
+    for(let q=-5; q<=5; q++) {
+        for(let r=-5; r<=5; r++) {
+            let p = getPos(q, r);
+            [getPos(q+1, r), getPos(q, r+1), getPos(q+1, r-1)].forEach(n => {
+                ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(n.x, n.y); ctx.stroke();
+            });
+        }
+    }
+
+    // 2. 自動偵測「面」 (三角形) 並填色
+    // 如果網格中三個相鄰點都在 activeNotes 裡，就畫出三角形
+    ctx.globalAlpha = 0.4;
+    for(let q=-5; q<=5; q++) {
+        for(let r=-5; r<=5; r++) {
+            const p = getPos(q, r);
+            const nR = getPos(q+1, r), nU = getPos(q, r+1), nD = getPos(q+1, r-1);
+            
+            const self = getNoteInfo(q, r).name;
+            const right = getNoteInfo(q+1, r).name;
+            const up = getNoteInfo(q, r+1).name;
+            const diag = getNoteInfo(q+1, r-1).name;
+
+            // 大三和弦三角形 (正)
+            if (activeNotes.has(self) && activeNotes.has(right) && activeNotes.has(up)) {
+                ctx.fillStyle = "#2C3E50";
+                ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(nR.x, nR.y); ctx.lineTo(nU.x, nU.y); ctx.fill();
+            }
+            // 小三和弦三角形 (倒)
+            if (activeNotes.has(self) && activeNotes.has(right) && activeNotes.has(diag)) {
+                ctx.fillStyle = "#E74C3C";
+                ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(nR.x, nR.y); ctx.lineTo(nD.x, nD.y); ctx.fill();
+            }
+        }
+    }
+    ctx.globalAlpha = 1.0;
+
+    // 3. 畫圓圈節點
+    for(let q=-5; q<=5; q++) {
+        for(let r=-5; r<=5; r++) {
+            let p = getPos(q, r);
+            let info = getNoteInfo(q, r);
+            let isActive = activeNotes.has(info.name);
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, nodeRadius, 0, Math.PI * 2);
+            ctx.fillStyle = isActive ? "#2C3E50" : "white";
+            ctx.strokeStyle = isActive ? "#2C3E50" : "#D1D1D6";
+            ctx.lineWidth = isActive ? 3 : 1;
+            ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = isActive ? "white" : "#333";
+            ctx.font = "bold 12px Inter";
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(info.name, p.x, p.y);
+        }
+    }
+    requestAnimationFrame(animate);
+}
+
+playBtn.onclick = async () => {
+    await Tone.start();
+    isPlaying = true;
+    startTime = Tone.now();
+    currentIndex = -1;
+    playBtn.style.display = 'none';
+};
+
+window.onresize = () => {
+    canvas.width = frame.clientWidth;
+    canvas.height = frame.clientHeight;
+};
+window.onresize();
+animate();
+</script>
+</body>
+</html>
