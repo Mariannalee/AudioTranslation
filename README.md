@@ -3,6 +3,8 @@ AudioTranslation
 
 ## MusicTest
 
+tonnze鍵盤影片連結：https://youtu.be/ABzm26fQIys
+
 <img width="1824" height="886" alt="image" src="https://github.com/user-attachments/assets/405f859e-3b59-4a00-8b3c-bec0ef4f6bef" />
 
 
@@ -65,14 +67,6 @@ AudioTranslation
         
          pip install pretty-midi
 
-##ChangeJson.py
-
-將ＭDID檔案轉為供MTonnze可讀取的json檔，為了同時間內多音將 MIDI 數據從單一音符的清單轉換為以時間點（Timestamp）為基準的群組。
-
-##index.html為網頁版的tonnze鍵盤及音檔測試檔，執行TonnzeTest2.py讀取剛剛ChangeJson.py生成的json檔，在本機運行，於瀏覽器輸入http://127.0.0.1:5001 即可。
-
-
-
 > [!TIP]
 > 相關套件：
 
@@ -83,4 +77,15 @@ AudioTranslation
 json轉換模組：
          
          fluidsynth:brew install fluidsynth
+
+
+##ChangeJson.py
+
+將ＭDID檔案轉為供MTonnze可讀取的json檔，為了同時間內多音將 MIDI 數據從單一音符的清單轉換為以時間點（Timestamp）為基準的群組。
+
+##index.html為網頁版的tonnze鍵盤及音檔測試檔，執行TonnzeTest2.py讀取剛剛ChangeJson.py生成的json檔，在本機運行，於瀏覽器輸入http://127.0.0.1:5001 即可。
+
+
+
+
 
