@@ -29,9 +29,7 @@ tonnze鍵盤影片連結：https://youtu.be/ABzm26fQIys
 > [!TIP]
 > Basic pitch套件只能用舊版python 3.10－3.11 
 
-         虛擬環境退出：deactivate
-
-         建制新環境：python3.11 -m venv ~/Desktop/python/musicMIDI
+         建制新環境：python3.11 -m venv ~/Desktop/python/musicMIDI(虛擬環境退出：deactivate)
 
          進入新環境：source ~/Desktop/python/musicMIDI/bin/activate
 
